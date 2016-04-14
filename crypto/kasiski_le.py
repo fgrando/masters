@@ -59,7 +59,7 @@ for k in range(MAX_LENGTH, MIN_LENGTH -1, -1):
 		print "testing keys with len", k
 	datatable.append([k])
 
-	#all possible keys (without repetitions):
+	#generate all possible keys (without repetitions):
 	keys = []
 	for i in range(0, cypherlen - k):
 		key = cyphertext[i:i+k]
