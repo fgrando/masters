@@ -1,13 +1,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include <QBoxLayout>
 #include <QVBoxLayout>
 #include <QString>
-#include <QList>
-
+#include <QStringList>
+#include <QFileDialog>
+#include <QMessageBox>
 #include <QDebug>
 
+#include "samplebox.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -129,6 +130,26 @@ void MainWindow::loadSamples()
 {
     int maxLength = 0;
     QStringList list = QStringList();
+
+#ifndef DEBUGME
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Open the file with One time pad samples..."), ".", tr("*.*"));
+    if (fileName.isEmpty())
+        exit(-1);
+
+    this->setWindowTitle(this->windowTitle() + " - " + fileName);
+    QFile textFile(fileName);
+    if(!textFile.open(QIODevice::ReadOnly))
+        QMessageBox::critical(this, "Failed reading file.", "Fatal error: the file could not be opened for reading...");
+
+    QTextStream in(&textFile);
+    while(!in.atEnd())
+    {
+        QString line = in.readLine().trimmed();
+        if (line.length() > 0)
+            list.append(line);
+    }
+    textFile.close();
+#else
     list.append("3939252352554c5f51592621294d5c5229382f5d454b485d4554413132275458482d3157415046495c5b2a435a46543527364d5059394847382a2b4b555746404a38202d4c525652455c2a");
     list.append("4d514c503134405f305f4e44292c41534a57414f2c2c2d4054544d5f552741424c5931345f415d2c2e4d4454405e504142522e31424a434c5f2a2b415a412f585a55452d2e20394941562a");
     list.append("56574023455d4449305b4745295b5b5a45385f59435a44574526453132445c5a454843404d585a2c4146464e3246544146554531445c49574a435f573a");
@@ -138,7 +159,9 @@ void MainWindow::loadSamples()
     list.append("5a4b5c53455b4e5e515b4e5829454136594a4a584942593349482442575150584c413150414648495c4d44433253594542452e5e51394b524846424d555046435d4b20434157585d414b5722");
     list.append("505f255a5e41294a5f5e484529585a532957414e2c58445e45265450562b355e45485f34514f5b2c46495c523241495b4e45465453395e4a51592b2e574b5a5e405d57425c4b37");
     list.append("5c6f607168346a607f7e6221616d613668387c62607a6861206a6d7f7b697224");
+#endif
 
+    //put the samples into widgets
     QVBoxLayout * layout = new QVBoxLayout();
     for (int i = 0; i < list.length(); i++)
     {
@@ -151,15 +174,18 @@ void MainWindow::loadSamples()
         sampleBox * sbox = new sampleBox(QString::fromStdString(line.toStdString()));
         QObject::connect(this, SIGNAL(highlightChar(int)), sbox, SLOT(selectChar(int)));
         QObject::connect(this, SIGNAL(calculate(QString)), sbox, SLOT(calculateXor(QString)));
-        samples.append(sbox);
         layout->addWidget(sbox);
 
     }
+
+    //fill key field
     QString key = "key";
     while (key.length() < maxLength)
         key = key + "?";
     ui->key->clear();
     ui->key->setPlainText(key);
+
+    //set the widgets
     ui->widget->setLayout(layout);
 }
 

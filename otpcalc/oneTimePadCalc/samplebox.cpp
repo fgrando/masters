@@ -1,6 +1,5 @@
 #include "samplebox.h"
 #include "ui_samplebox.h"
-
 #include <QDebug>
 
 sampleBox::sampleBox(QString encrypted, QWidget *parent) :
@@ -43,6 +42,7 @@ void sampleBox::calculateXor(QString key)
     }
     ui->decrypted->clear();
     ui->decrypted->setText(result);
+    qDebug()<<result;
 }
 
 void sampleBox::selectChar(int charIdx)
@@ -80,23 +80,15 @@ QString sampleBox::highLight(QString str, int idx)
     {
         for (int i = 0; i < str.length(); i++)
         {
-            if (validChar(str.at(i).toLatin1()))
+            if (i == idx)
             {
-                if (i == idx)
-                {
-                    html = html +  "<font color=\"Red\">" + str.at(i) + "</font>";
-                }
-                else
-                {
-                    html = html + str.at(i);
-                }
+                html = html +  "<font color=\"Red\">" + str.at(i) + "</font>";
             }
             else
             {
-                html = html +  "<font color=\"Yellow\">" + str.at(i) + "</font>";
+                html = html + str.at(i);
             }
         }
     }
-    qDebug()<<html;
     return html;
 }

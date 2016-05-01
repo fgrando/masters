@@ -70,6 +70,7 @@ public:
 
         groupBox = new QGroupBox(centralWidget);
         groupBox->setObjectName(QStringLiteral("groupBox"));
+        groupBox->setMaximumSize(QSize(230, 16777215));
         gridLayout = new QGridLayout(groupBox);
         gridLayout->setSpacing(6);
         gridLayout->setContentsMargins(11, 11, 11, 11);
@@ -101,7 +102,7 @@ public:
 
         textEdit = new QTextEdit(centralWidget);
         textEdit->setObjectName(QStringLiteral("textEdit"));
-        textEdit->setMinimumSize(QSize(730, 0));
+        textEdit->setMinimumSize(QSize(0, 0));
         textEdit->setMaximumSize(QSize(16777215, 55));
         textEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         textEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);

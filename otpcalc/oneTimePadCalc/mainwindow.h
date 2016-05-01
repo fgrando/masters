@@ -2,9 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <samplebox.h>
-
-#include <QList>
 
 namespace Ui {
 class MainWindow;
@@ -33,10 +30,6 @@ signals:
 private:
     Ui::MainWindow *ui;
     int keyIdx;
-    QList<QString> *SAMPLES;
-    QString *KEY;
-
-    QList<sampleBox*> samples;
 };
 
 #endif // MAINWINDOW_H
