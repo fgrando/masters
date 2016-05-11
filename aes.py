@@ -6,7 +6,26 @@ from Crypto.Util import Counter # for CTR
 
 BLOCK_SIZE=16
 
-print "CBC - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "
+def CBCdecrypt(ciphertext, key):
+    IV = ciphertext[:BLOCK_SIZE] #previous 16 chars are out IV
+    aes = AES.new(key, AES.MODE_CBC, IV)
+    return aes.decrypt(ciphertext[BLOCK_SIZE:]) #discard IV in decryption process
+def CBCencrypt(plaintext, key):
+    IV = Random.new().read(BLOCK_SIZE)
+    aes = AES.new(key, AES.MODE_CBC, IV)
+    return IV.encode('hex') + aes.encrypt(plaintext).encode('hex')
+
+def CTRdecrypt(ciphertext, key):
+    IV = ciphertext[:BLOCK_SIZE]
+    ctr = Counter.new(128, initial_value=long(IV.encode("hex"), 16)) #128 bits long counter initialized with IV
+    aes = AES.new(key, AES.MODE_CTR, counter=ctr)
+    return aes.decrypt(ciphertext[BLOCK_SIZE:])
+
+def CTRencrypt(plaintext, key):
+    IV = Random.new().read(BLOCK_SIZE)
+    ctr = Counter.new(128, initial_value=long(IV.encode("hex"), 16)) #128 bits long counter, using some IV as prefix
+    aes = AES.new(key, AES.MODE_CTR, counter=ctr)
+    return IV.encode('hex') + aes.encrypt(plaintext).encode('hex')
 
 def pad(text):
     #chech if the string needs to be padded
@@ -18,23 +37,151 @@ def pad(text):
         return text
 
     padByte = (BLOCK_SIZE - rem)  # divided by two because every 2 chars mean 1 byte in this hex string
-    print tab + "is {} bytes long, needs padding of {} bytes".format(l, padByte)
+    #print tab + "is {} bytes long, needs padding of {} bytes".format(l, padByte)
     for i in range(0, padByte):
         text = text + hex(padByte)[2:].zfill(2)
-    print tab + text
-    print tab + "byte length after padding:", len(text)/2
+    #print tab + text
+    #print tab + "byte length after padding:", len(text)/2
     return text
 
-def CBCdecrypt(ciphertext, key):
-    IV = ciphertext[:BLOCK_SIZE] #previous 16 chars are out IV
-    aes = AES.new(key, AES.MODE_CBC, IV)
-    return aes.decrypt(ciphertext[BLOCK_SIZE:]) #discard IV in decryption process
-def CBCencrypt(plaintext, key):
-    # initialization vector
-    IV = Random.new().read(BLOCK_SIZE)
-    aes = AES.new(key, AES.MODE_CBC, IV)
-    return IV.encode('hex') + aes.encrypt(plaintext).encode('hex')
+#XXX TODO: fix unpad
+def unpad(hexstr):
+    return hexstr
+    cipher = hexstr.encode('hex')
+    bytes = split_every(2, cipher)
+    print bytes
+    last = hex(bytes[-1])
+    if last > 0xf:
+        return hexstr
+    return hexstr
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Local CTR and CBC encryption implementation
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+def split_every(n, s):
+    '''Split string s every n characters'''
+    return [ s[i:i+n] for i in xrange(0, len(s), n) ]
+
+def XOR(a, b):
+    '''The XOR operation between a and b, that should be hex strings'''
+    xor = ""
+    #print a, b
+    for i in range(len(a)):
+        xor = xor + hex(int(a[i], 16) ^ int(b[i], 16))[2:]
+    return xor
+
+def MyCBCdecrypt(ciphertext, key):
+    '''Local CBC decryption implementation'''
+    ciphertext = unpad(ciphertext)
+    IV = ciphertext[:BLOCK_SIZE] #previous 16 chars are our IV
+    
+    plain = ""
+    secret = ciphertext[BLOCK_SIZE:]
+    if len(secret)%BLOCK_SIZE != 0:
+        print "bad padding"
+        exit(-1)
+
+    blocks = split_every(BLOCK_SIZE, secret)
+    blocks.reverse()
+    for i in range(len(blocks)-1):
+        aes = AES.new(key, AES.MODE_ECB)
+        dec = aes.decrypt(blocks[i])
+        xor = XOR(dec.encode('hex'), blocks[i+1].encode('hex')).decode('hex') #encode as hex to calculate XOR, the decode back
+        plain = xor + plain
+
+    last = blocks[-1]
+    aes = AES.new(key, AES.MODE_ECB)
+    dec = aes.decrypt(last)
+    xor = XOR(dec.encode('hex'), IV.encode('hex')).decode('hex') #encode as hex to calculate XOR, the decode back
+    plain = xor + plain
+    return plain
+
+def MyCBCencrypt(plaintext, key):
+    '''Local CBC encryption procedure implementation'''
+    IV = Random.new().read(BLOCK_SIZE) #generate a random Initialization Vector
+    ciphertext = IV.encode('hex')
+    blocks = split_every(BLOCK_SIZE, plaintext)
+    for i in range(len(blocks)):
+        xor = XOR(IV.encode('hex'), blocks[i].encode('hex')).decode('hex') # encode to hex to do xor, then decode back
+        aes = AES.new(key, AES.MODE_ECB)
+        enc = aes.encrypt(xor)
+        ciphertext = ciphertext + enc.encode('hex')
+        IV = enc
+    return ciphertext
+
+
+def expandCounter(init, length):
+    '''Returns a list of all consecutive counter values starting from init.'''
+    counters = []
+    counters.append(init)
+    #print "counter: ", init
+    for i in range(length):
+        #increment counter
+        cc = long(counters[i], 16) + 1
+        counter = str(hex(cc))[2:-1]
+        counters.append(counter)
+        #print "counter: ", counter
+    return counters
+
+def MyCTRdecrypt(ciphertext, key):
+    ciphertext = unpad(ciphertext)
+    initCounter = ciphertext[:BLOCK_SIZE] #previous 16 chars are our IV
+    
+    plain = ""
+    secret = ciphertext[BLOCK_SIZE:] #ciphertext start at char 16
+    blocks = split_every(BLOCK_SIZE, secret)
+    counters = expandCounter(initCounter.encode('hex'), len(blocks)) #since we know only the first value, we have to expand all values needed
+    blocks.reverse()
+    counters.reverse()
+
+    # remove padding after decryption of first block
+    for i in range(len(blocks) -1):
+        aes = AES.new(key, AES.MODE_ECB)
+        dec = aes.decrypt(counters[i].decode('hex'))
+
+        print 'key     ', i,  key.encode('hex')
+        print 'block   ', i,  blocks[i].encode('hex')
+        print 'counter ', i,  counters[i]
+        print 'dec     ', i,  dec.encode('hex')
+
+        #xor = XOR(IV.encode('hex'), blocks[i].encode('hex')).decode('hex') # encode to hex to do xor, then decode back
+
+        if len(blocks[i]) < BLOCK_SIZE:
+            padded = pad(blocks[i].encode('hex'))
+            print "padded  ", i, padded
+            xor = XOR(dec.encode('hex'), padded).decode('hex') # encode to hex to do xor, then decode back. padded is already encoded
+        else:
+            xor = XOR(dec.encode('hex'), blocks[i].encode('hex')).decode('hex') # encode to hex to do xor, then decode back
+
+        plain = xor + plain
+
+    return plain
+
+def MyCTRencrypt(plaintext, key):
+    IV = Random.new().read(BLOCK_SIZE)
+    ciphertext = IV.encode('hex') # IV goes at the beggining of ciphertext
+    counter = IV.encode("hex")
+    blocks = split_every(BLOCK_SIZE, plaintext)
+    for block in blocks:
+        aes = AES.new(key, AES.MODE_ECB)
+        enc = aes.encrypt(counter.decode('hex'))
+        if len(block) < BLOCK_SIZE:
+            padded = pad(block.encode('hex'))
+            xor = XOR(enc.encode('hex'), padded).decode('hex') # encode to hex to do xor, then decode back
+        else:
+            xor = XOR(enc.encode('hex'), block.encode('hex')).decode('hex') # encode to hex to do xor, then decode back
+        ciphertext = ciphertext + xor.encode('hex')
+
+        #increment counter
+        cc = long(counter, 16) + 1
+        counter = str(hex(cc))[2:-1]
+    return ciphertext
+
+
+
+
+print "CBC encryption..."
+#inputs is a list with [plaintext, key, ciphertext]
 CBCinputs= [
 ["", "140b41b22a29beb4061bda66b6747e14", "4ca00ff4c898d61e1edbf1800618fb2828a226d160dad07883d04e008a7897ee2e4b7465d5290d0c0e6c6822236e1daafb94ffe0c5da05d9476be028ad7c1d81"],
 ["", "140b41b22a29beb4061bda66b6747e14", "5b68629feb8606f9a6667670b75b38a5b4832d0f26e1ab7da33249de7d4afc48e713ac646ace36e872ad5fb8a512428a6e21364b0c374df45503473c5242a253"],
@@ -47,37 +194,30 @@ for i in CBCinputs:
         print "skipping invalid input..."
         continue
 
-    print "input {}: ".format(CBCinputs.index(i))
-
     #the input is hex encoded
     plaintext =  pad(i[0])
     key =        pad(i[1])
     ciphertext = pad(i[2])
 
+    print "key.....:", key
     # if has no plaintext, decode
     if plaintext == "":
-        print ciphertext
-        print CBCdecrypt(ciphertext.decode('hex'), key.decode('hex'))
+        print "ciphered:", ciphertext
+        print "==lib===>", CBCdecrypt(ciphertext.decode('hex'), key.decode('hex'))
+        print "==mine==>", MyCBCdecrypt(ciphertext.decode('hex'), key.decode('hex')) #decrypt using local method
     else:
-        print plaintext.decode('hex')
-        print CBCencrypt(plaintext.decode('hex'), key.decode('hex'))
+        print "plain...:", plaintext.decode('hex')
+        print "==lib===>", CBCencrypt(plaintext.decode('hex'), key.decode('hex'))
+        mine = MyCBCencrypt(plaintext.decode('hex'), key.decode('hex'))      # encrypt using local method
+        print "==mine==>", mine
+        print "lib decr>", CBCdecrypt(mine.decode('hex'), key.decode('hex')) # decrypt the result using lib method, to check if encryption is ok.
+    print ""
 
 
-print "\n\nCTR - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "
-def CTRdecrypt(ciphertext, key):
-    IV = ciphertext[:16]
-#    ctr = Counter.new(64, initial_value=long(IV, 16)) #64 bits long counter
-    ctr = Counter.new(128, initial_value=long(IV.encode("hex"), 16)) #64 bits long counter initialized with IV
-    aes = AES.new(key, AES.MODE_CTR, counter=ctr)
-    return aes.decrypt(ciphertext[16:])
 
-def CTRencrypt(plaintext, key):
-    IV = Random.new().read(BLOCK_SIZE)
-    ctr = Counter.new(128, initial_value=long(IV.encode("hex"), 16)) #64 bits long counter, using some IV as prefix
-    aes = AES.new(key, AES.MODE_CTR, counter=ctr)
-    return IV.encode('hex') + aes.encrypt(plaintext).encode('hex')
 
-#inputs is a list with [plaintext, key, ciphertext]
+
+print "CTR encryption..."
 CTRinputs= [
 ["", "36f18357be4dbd77f050515c73fcf9f2", "69dda8455c7dd4254bf353b773304eec0ec7702330098ce7f7520d1cbbb20fc388d1b0adb5054dbd7370849dbf0b88d393f252e764f1f5f7ad97ef79d59ce29f5f51eeca32eabedd9afa9329"],
 ["", "36f18357be4dbd77f050515c73fcf9f2", "770b80259ec33beb2561358a9f2dc617e46218c0a53cbeca695ae45faa8952aa0e311bde9d4e01726d3184c34451"],
@@ -89,20 +229,26 @@ for i in CTRinputs:
         print "skipping invalid input..."
         continue
 
-    print "input {}: ".format(CTRinputs.index(i))
-
     #the input is hex encoded
     plaintext =  i[0]
     key =        i[1]
     ciphertext = i[2]
 
+    print "key.....:", key
     # if has no plaintext, decode
     if plaintext == "":
-        print ciphertext
-        print CTRdecrypt(ciphertext.decode('hex'), key.decode('hex'))
+        print "ciphered:", ciphertext
+        print "========>", CTRdecrypt(ciphertext.decode('hex'), key.decode('hex'))
+        mine = MyCTRdecrypt(ciphertext.decode('hex'), key.decode('hex')) #decrypt using local method
+        print "==mine==>", mine
+
     else:
-        print plaintext.decode('hex')
-        print CTRencrypt(plaintext.decode('hex'), key.decode('hex'))
+        print "plain...:", plaintext.decode('hex')
+        print "==lib===>", CTRencrypt(plaintext.decode('hex'), key.decode('hex'))
+        mine = MyCTRencrypt(plaintext.decode('hex'), key.decode('hex'))      # encrypt using local method
+        print "==mine==>", mine
+        print "lib decr>", CTRdecrypt(mine.decode('hex'), key.decode('hex')) # decrypt the result using lib method, to check if encryption is ok.
+    print ""
 
 
 
