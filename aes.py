@@ -124,72 +124,42 @@ def expandCounter(init, size):
     return counters
 
 def MyCTRdecrypt(ciphertext, key):
-    ciphertext = unpad(ciphertext)
-    initCounter = ciphertext[:BLOCK_SIZE] #previous 16 chars are our IV
-    
     plain = ""
-    secret = ciphertext[BLOCK_SIZE:] #ciphertext start at char 16
-    blocks = split_every(BLOCK_SIZE, secret)
-    counters = expandCounter(initCounter.encode('hex'), len(blocks)) #since we know only the first value, we have to expand all values needed
+    blocks = split_every(BLOCK_SIZE, ciphertext)
+    counter = blocks[0]
+    blocks.remove(counter)
 
-    counter = initCounter.encode('hex')
-    for i in range(len(blocks)):
+    for b in blocks:
         aes = AES.new(key, AES.MODE_ECB)
-        dec = aes.decrypt(counters[i].decode('hex'))
-        print 'key     ', i,  key.encode('hex'), 'counter ', counters[i]
-        print 'dec     ', i,  dec.encode('hex')
-        print 'block   ', i,  blocks[i].encode('hex')
+        dec = aes.encrypt(counter)
 
-        if len(blocks[i]) < BLOCK_SIZE:
-            padded = pad(blocks[i].encode('hex'))
-            print " padded ", i, padded
+        blockLen = len(b)
+        if blockLen < BLOCK_SIZE:
+            padded = pad(b.encode('hex'))
             xor = XOR(dec.encode('hex'), padded).decode('hex') # encode to hex to do xor, then decode back. padded is already encoded
+            xor = xor[:blockLen] # remove the padding added to compute xor 
         else:
-            xor = XOR(dec.encode('hex'), blocks[i].encode('hex')).decode('hex') # encode to hex to do xor, then decode back
-        
-        print 'xor     ', i, xor.encode('hex')
-        print 'xor     ', i, xor
+            xor = XOR(dec.encode('hex'), b.encode('hex')).decode('hex') # encode to hex to do xor, then decode back
+
         plain = plain + xor
-        
-    print "-- - - - --- --"
-
-    for i in range(len(blocks)):
-        aes = AES.new(key, AES.MODE_ECB)
-        dec = aes.decrypt(counters[i].decode('hex'))
-
-        print 'key     ', i,  key.encode('hex')
-        print 'counter ', i,  counters[i]
-        print 'dec     ', i,  dec.encode('hex')
-        print 'block   ', i,  blocks[i].encode('hex')
-
-        if len(blocks[i]) < BLOCK_SIZE:
-            origLen = len(blocks[i])
-            padded = pad(blocks[i].encode('hex'))
-            print " padded ", i, padded
-            xor = XOR(dec.encode('hex'), padded).decode('hex') # encode to hex to do xor, then decode back. padded is already encoded
-            xor = xor[:origLen]
-        else:
-            xor = XOR(dec.encode('hex'), blocks[i].encode('hex')).decode('hex') # encode to hex to do xor, then decode back
-        
-        print 'xor     ', i, xor.encode('hex')
-        print 'xor     ', i, xor
-        plain = plain + xor
-
+        cc = long(counter.encode('hex'), 16) + 1
+        counter = hex(cc)[2:-1].decode('hex')
     return plain
+
 
 def MyCTRencrypt(plaintext, key):
     IV = Random.new().read(BLOCK_SIZE)
     ciphertext = IV.encode('hex') # IV goes at the beggining of ciphertext
-    counter = IV.encode("hex")
+    counter = IV.encode('hex')
     blocks = split_every(BLOCK_SIZE, plaintext)
     for block in blocks:
         aes = AES.new(key, AES.MODE_ECB)
         enc = aes.encrypt(counter.decode('hex'))
-        if len(block) < BLOCK_SIZE:
-            origLen = len(block)
+        blockLen = len(block)
+        if blockLen < BLOCK_SIZE:
             padded = pad(block.encode('hex'))
             xor = XOR(enc.encode('hex'), padded).decode('hex') # encode to hex to do xor, then decode back
-            xor = xor[:origLen] # remove the padding added to compute xor
+            xor = xor[:blockLen] # remove the padding added to compute xor
         else:
             xor = XOR(enc.encode('hex'), block.encode('hex')).decode('hex') # encode to hex to do xor, then decode back
         ciphertext = ciphertext + xor.encode('hex')
