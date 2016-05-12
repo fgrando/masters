@@ -65,7 +65,6 @@ def split_every(n, s):
 def XOR(a, b):
     '''The XOR operation between a and b, that should be hex strings'''
     xor = ""
-    #print a, b
     for i in range(len(a)):
         xor = xor + hex(int(a[i], 16) ^ int(b[i], 16))[2:]
     return xor
@@ -109,25 +108,11 @@ def MyCBCencrypt(plaintext, key):
         IV = enc
     return ciphertext
 
-
-def expandCounter(init, size):
-    '''Returns a list of all consecutive counter values starting from init.'''
-    counters = []
-    counters.append(init)
-    print "counter: ", init
-    for i in range(size -1): # we already included the first outside this loop
-        #increment counter
-        cc = long(counters[i], 16) + 1
-        counter = str(hex(cc))[2:-1]
-        counters.append(counter)
-        print "counter: ", counter
-    return counters
-
 def MyCTRdecrypt(ciphertext, key):
     plain = ""
     blocks = split_every(BLOCK_SIZE, ciphertext)
     counter = blocks[0]
-    blocks.remove(counter)
+    blocks.remove(counter) # first block is the counter
 
     for b in blocks:
         aes = AES.new(key, AES.MODE_ECB)
@@ -145,7 +130,6 @@ def MyCTRdecrypt(ciphertext, key):
         cc = long(counter.encode('hex'), 16) + 1
         counter = hex(cc)[2:-1].decode('hex')
     return plain
-
 
 def MyCTRencrypt(plaintext, key):
     IV = Random.new().read(BLOCK_SIZE)
@@ -172,7 +156,7 @@ def MyCTRencrypt(plaintext, key):
 
 
 
-print "CBC encryption..."
+print "\n * CBC encryption... \n"
 #inputs is a list with [plaintext, key, ciphertext]
 CBCinputs= [
 ["", "140b41b22a29beb4061bda66b6747e14", "4ca00ff4c898d61e1edbf1800618fb2828a226d160dad07883d04e008a7897ee2e4b7465d5290d0c0e6c6822236e1daafb94ffe0c5da05d9476be028ad7c1d81"],
@@ -209,7 +193,7 @@ for i in CBCinputs:
 
 
 
-print "CTR encryption..."
+print "\n * CTR encryption...\n"
 CTRinputs= [
 ["", "36f18357be4dbd77f050515c73fcf9f2", "69dda8455c7dd4254bf353b773304eec0ec7702330098ce7f7520d1cbbb20fc388d1b0adb5054dbd7370849dbf0b88d393f252e764f1f5f7ad97ef79d59ce29f5f51eeca32eabedd9afa9329"],
 ["", "36f18357be4dbd77f050515c73fcf9f2", "770b80259ec33beb2561358a9f2dc617e46218c0a53cbeca695ae45faa8952aa0e311bde9d4e01726d3184c34451"],
