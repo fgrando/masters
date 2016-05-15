@@ -162,7 +162,6 @@ CBCinputs= [
 ["", "140b41b22a29beb4061bda66b6747e14", "4ca00ff4c898d61e1edbf1800618fb2828a226d160dad07883d04e008a7897ee2e4b7465d5290d0c0e6c6822236e1daafb94ffe0c5da05d9476be028ad7c1d81"],
 ["", "140b41b22a29beb4061bda66b6747e14", "5b68629feb8606f9a6667670b75b38a5b4832d0f26e1ab7da33249de7d4afc48e713ac646ace36e872ad5fb8a512428a6e21364b0c374df45503473c5242a253"],
 ["4e657874205468757273646179206f6e65206f66207468652062657374207465616d7320696e2074686520776f726c642077696c6c2066616365206120626967206368616c6c656e676520696e20746865204c696265727461646f72657320646120416d6572696361204368616d70696f6e736869702e", "140b41b22a29beb4061bda66b6747e14", ""],
-["", "140b41b22a29beb4061bda66b6747e14", "821128dded29daaea3f267c18e4b5a0285d0658f459a528d0b77f75bd4abdc36cb7bdacc8ab95d8b334e4411a546d995c01a6ac318fa48b8e00983fab1970ae28a618b7c1d82713fc82e4a470e287cc16ab2699dba4e8a6d80ff8d8e72ce64b0dca6d3cf360d0ce91716bdf8dd2873c53a1d92db2894138ae4337723021529942a7b83286f4e8fa34fe19c0b9e4841d7"]
 ]
 for i in CBCinputs:
     #if lenght is not 3, the input is invalid
@@ -214,7 +213,7 @@ for i in CTRinputs:
     # if has no plaintext, decode
     if plaintext == "":
         print "ciphered:", ciphertext
-        print "========>", CTRdecrypt(ciphertext.decode('hex'), key.decode('hex'))
+        print "==lib===>", CTRdecrypt(ciphertext.decode('hex'), key.decode('hex'))
         mine = MyCTRdecrypt(ciphertext.decode('hex'), key.decode('hex')) #decrypt using local method
         print "==mine==>", mine
 

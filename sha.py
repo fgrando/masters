@@ -9,7 +9,7 @@ def split_every(n, s):
 
 # check if the file name was informed
 if len(sys.argv) < 2:
-	print "Usage: {} file.mp4".format(sys.argv[0])
+	print "Usage: {} file".format(sys.argv[0])
 	exit(-1)
 
 # the video file
@@ -40,6 +40,6 @@ for i in range(1, totalBlocks):	# ignore first block
 	if i == totalBlocks-1: # last element, first block
 		print "h0->", '\t', block_hash
 	
-	else: # print the hash every 200 blocks (to reduce verbosity)
-		if i%200 == 0:
+	else: # print the hash every n blocks (to reduce verbosity)
+		if i%700 == 0:
 			print  i, '\t', block_hash
